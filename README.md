@@ -33,3 +33,7 @@ Clone the repository to your local machine by running the following command in y
 
 ```bash
 git clone https://github.com/jayjadhav04/stock-analysis.git
+
+![Screenshot (126)n](https://github.com/user-attachments/assets/a40ef831-a3e4-4e8c-a6cc-0c7539aa6000)
+![Screenshot (127)](https://github.com/user-attachments/assets/10dd7e89-600d-4528-bc32-de6d7f5b5b37)
+
