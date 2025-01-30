@@ -1,2 +1,35 @@
-# stock-analysis
-Stock Analysis - Nifty50 &amp; NiftyBank This project provides a real-time stock data analysis platform for Nifty50 and NiftyBank indices. Developed using Python and Flask, the app fetches stock data via the Yahoo Finance API (yfinance library) and displays key metrics such as current stock prices, percentage changes, and opening prices.
+# Stock Analysis - Nifty50 & NiftyBank
+
+This project provides real-time stock data analysis for **Nifty50** and **NiftyBank** indices using **Python** and **Flask**. It fetches the latest stock data, including price, percentage change, and other key details, and displays them in a user-friendly web interface. The application updates the stock data every 10 seconds.
+
+## Features:
+- Fetches stock data for Nifty50 and NiftyBank indices.
+- Displays the latest stock prices, percentage changes, and opening prices.
+- Updates the stock data in real time (every 10 seconds).
+- Shows stock information in a responsive and visually appealing interface.
+
+### Stock Data Visualization:
+The stock data for each index will be displayed in a box with:
+- Stock Symbol
+- Current Stock Price
+- Percentage Change
+- Opening Price
+
+The boxes are color-coded based on the percentage change:
+- Green for positive change
+- Red for negative change
+
+## Installation
+
+### Prerequisites:
+Before running this project, ensure you have the following installed on your system:
+- **Python 3.x** (preferably 3.6 or higher)
+- **pip** (Python's package installer)
+
+### Step-by-Step Guide:
+
+#### 1. Clone the Repository:
+Clone the repository to your local machine by running the following command in your terminal or command prompt:
+
+```bash
+git clone https://github.com/jayjadhav04/stock-analysis.git
