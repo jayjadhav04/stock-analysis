@@ -169,7 +169,3 @@ Contributions are welcome!
 - GitHub: [jayjadhav04](https://github.com/jayjadhav04)
 
 ---
-
-# ⭐ Support
-
-If you like this project, give it a ⭐ on GitHub.
