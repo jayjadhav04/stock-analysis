@@ -46,7 +46,7 @@ The UI uses color-coded stock cards for quick visualization of market performanc
 
 ## 🔹 Nifty50 Stock Analysis Dashboard
 
-![Nifty50 Dashboard](Screenshot/Screenshot%20(126).png)
+![Nifty50 Dashboard](Screenshot/Screenshot%20(126)n.png)
 
 ---
 
