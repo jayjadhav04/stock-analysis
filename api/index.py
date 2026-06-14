@@ -147,7 +147,7 @@ def index():
                 fetchStockData();
                 
                 clearInterval(fetchInterval);
-                fetchInterval = setInterval(fetchStockData, 10000); 
+                fetchInterval = setInterval(fetchStockData, 60000); 
             }
 
             async function fetchStockData() {
