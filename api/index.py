@@ -1,6 +1,7 @@
 from flask import Flask, jsonify, render_template_string
 import yfinance as yf
 from flask_cors import CORS
+import pandas as pd
 
 app = Flask(__name__)
 CORS(app)
@@ -15,33 +16,44 @@ nifty50_symbols = [
     "RELIANCE.NS", "TCS.NS", "HDFCBANK.NS", "BHARTIARTL.NS", "ICICIBANK.NS", "INFY.NS", "SBIN.NS", "ITC.NS", "HINDUNILVR.NS", "LT.NS", "HCLTECH.NS", "SUNPHARMA.NS", "BAJFINANCE.NS", "M&M.NS", "NTPC.NS", "KOTAKBANK.NS", "AXISBANK.NS", "MARUTI.NS", "ULTRACEMCO.NS", "ONGC.NS", "WIPRO.NS", "TITAN.NS", "POWERGRID.NS", "TATAMOTORS.NS", "ADANIENT.NS", "ADANIPORTS.NS", "BAJAJFINSV.NS", "COALINDIA.NS", "BAJAJ-AUTO.NS", "JSWSTEEL.NS", "TRENT.NS", "BEL.NS", "ASIANPAINT.NS", "NESTLEIND.NS", "TATASTEEL.NS", "GRASIM.NS", "TECHM.NS", "HINDALCO.NS", "SBILIFE.NS", "HDFCLIFE.NS", "EICHERMOT.NS", "BPCL.NS", "SHRIRAMFIN.NS", "CIPLA.NS", "BRITANNIA.NS", "APOLLOHOSP.NS", "DRREDDY.NS", "HEROMOTOCO.NS", "TATACONSUM.NS", "INDUSINDBK.NS"
 ]
 
-# --- Helper Function to Fetch Data ---
+# --- Optimized Bulk Fetch Function ---
 def fetch_stock_data(symbols):
     data = []
     errors = []
-    for symbol in symbols:
-        try:
-            stock = yf.Ticker(symbol)
-            stock_data = stock.history(period="5d")  
-            
-            if not stock_data.empty and len(stock_data) > 1:
-                latest = stock_data.iloc[-1]
-                previous = stock_data.iloc[-2]
+    try:
+        # Fetch all symbols simultaneously (MUCH faster, bypasses 10s timeout)
+        df = yf.download(symbols, period="5d", progress=False)
+        
+        if df.empty:
+            return {"data": [], "errors": ["No data returned from Yahoo Finance"]}
 
-                price = latest["Close"]
-                prev_close = previous["Close"]
-                percent_change = ((price - prev_close) / prev_close) * 100
+        for symbol in symbols:
+            try:
+                # Extract the specific columns for the symbol and drop empty days
+                closes = df['Close'][symbol].dropna()
+                opens = df['Open'][symbol].dropna()
+                
+                if len(closes) > 1:
+                    latest_close = float(closes.iloc[-1])
+                    prev_close = float(closes.iloc[-2])
+                    latest_open = float(opens.iloc[-1])
 
-                data.append({
-                    "symbol": symbol,
-                    "price": price,
-                    "percent_change": percent_change,
-                    "open_price": latest["Open"]
-                })
-            else:
-                errors.append(f"No data for {symbol}")
-        except Exception as e:
-            errors.append(f"Error for {symbol}: {e}")
+                    percent_change = ((latest_close - prev_close) / prev_close) * 100
+
+                    data.append({
+                        "symbol": symbol,
+                        "price": latest_close,
+                        "percent_change": percent_change,
+                        "open_price": latest_open
+                    })
+                else:
+                    errors.append(f"Not enough data for {symbol}")
+            except Exception as e:
+                errors.append(f"Error parsing {symbol}: {str(e)}")
+                
+    except Exception as e:
+        errors.append(f"Bulk download error: {str(e)}")
+
     return {"data": data, "errors": errors}
 
 # --- API Routes ---
@@ -75,7 +87,8 @@ def index():
             .price { font-size: 18px; font-weight: bold; margin: 10px 0; }
             .percent-change { font-size: 16px; }
             .summary { text-align: center; margin-top: 20px; font-size: 18px; padding: 20px; background: white; border-top: 2px solid #ddd; }
-            #loading { text-align: center; font-size: 18px; display: none; color: #555; }
+            #loading { text-align: center; font-size: 18px; display: none; color: #555; font-weight: bold; }
+            #error-box { text-align: center; color: red; font-weight: bold; margin-top: 10px; }
         </style>
     </head>
     <body>
@@ -86,7 +99,8 @@ def index():
             <button id="btn-nifty" onclick="switchIndex('nifty50', 'Nifty 50')">Load Nifty 50</button>
         </div>
 
-        <div id="loading">Fetching data, please wait...</div>
+        <div id="loading">Fetching data from Yahoo Finance, please wait...</div>
+        <div id="error-box"></div>
 
         <div class="stock-container" id="stock-container"></div>
         <div class="summary" id="summary"></div>
@@ -111,20 +125,29 @@ def index():
                 document.getElementById('main-title').innerText = `${title} Analysis`;
                 fetchStockData();
                 
-                // Reset interval to avoid overlapping fetches
                 clearInterval(fetchInterval);
-                fetchInterval = setInterval(fetchStockData, 10000); // Refreshes every 10 seconds
+                fetchInterval = setInterval(fetchStockData, 10000); 
             }
 
             async function fetchStockData() {
                 document.getElementById('loading').style.display = 'block';
+                document.getElementById('error-box').innerText = ''; // Clear old errors
+                document.getElementById('stock-container').innerHTML = ''; // Clear old data
+
                 try {
                     const response = await fetch(currentEndpoint);
-                    const { data } = await response.json();
+                    
+                    if (!response.ok) {
+                        throw new Error(`Server returned status ${response.status}. (Vercel Timeout or Server Error)`);
+                    }
+
+                    const { data, errors } = await response.json();
+
+                    if (errors && errors.length > 0 && data.length === 0) {
+                         throw new Error(errors[0]);
+                    }
 
                     const container = document.getElementById('stock-container');
-                    container.innerHTML = '';
-
                     let positiveCount = 0; let negativeCount = 0;
                     let positiveTotalPercent = 0; let negativeTotalPercent = 0;
                     let totalPercent = 0;
@@ -155,13 +178,14 @@ def index():
                         <p>Total Overall % Change: <b>${totalPercent.toFixed(2)}%</b></p>
                     `;
                 } catch (err) {
-                    console.error("Error:", err);
+                    console.error("Fetch Error:", err);
+                    document.getElementById('error-box').innerText = `Failed to load data: ${err.message}.`;
+                    document.getElementById('summary').innerHTML = ''; // Hide zeroes if failed
                 } finally {
                     document.getElementById('loading').style.display = 'none';
                 }
             }
 
-            // Initial load
             switchIndex('banknifty', 'Bank Nifty');
         </script>
     </body>
@@ -171,4 +195,3 @@ def index():
 
 if __name__ == '__main__':
     app.run(debug=True)
-
