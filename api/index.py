@@ -1,10 +1,17 @@
 from flask import Flask, jsonify, render_template_string
-import yfinance as yf
 from flask_cors import CORS
+import yfinance as yf
 import pandas as pd
+import requests
 
 app = Flask(__name__)
 CORS(app)
+
+# --- Set up a custom browser session to bypass Yahoo's bot blocks ---
+session = requests.Session()
+session.headers.update({
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+})
 
 # --- Lists of Stock Symbols ---
 bank_nifty_symbols = [
@@ -21,11 +28,13 @@ def fetch_stock_data(symbols):
     data = []
     errors = []
     try:
-        # Fetch all symbols simultaneously (MUCH faster, bypasses 10s timeout)
-        df = yf.download(symbols, period="5d", progress=False)
+        # Fetch all symbols simultaneously
+        # threads=False bypasses Vercel background thread limits
+        # session=session disguises the request as a normal web browser
+        df = yf.download(symbols, period="5d", progress=False, threads=False, session=session)
         
         if df.empty:
-            return {"data": [], "errors": ["No data returned from Yahoo Finance"]}
+            return {"data": [], "errors": ["No data returned from Yahoo Finance. Vercel IP might be temporarily blocked."]}
 
         for symbol in symbols:
             try:
@@ -138,7 +147,7 @@ def index():
                     const response = await fetch(currentEndpoint);
                     
                     if (!response.ok) {
-                        throw new Error(`Server returned status ${response.status}. (Vercel Timeout or Server Error)`);
+                        throw new Error(`Server returned status ${response.status}.`);
                     }
 
                     const { data, errors } = await response.json();
@@ -179,7 +188,7 @@ def index():
                     `;
                 } catch (err) {
                     console.error("Fetch Error:", err);
-                    document.getElementById('error-box').innerText = `Failed to load data: ${err.message}.`;
+                    document.getElementById('error-box').innerText = `Failed to load data: ${err.message}`;
                     document.getElementById('summary').innerHTML = ''; // Hide zeroes if failed
                 } finally {
                     document.getElementById('loading').style.display = 'none';
