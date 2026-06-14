@@ -118,8 +118,9 @@ def index():
         <div class="summary" id="summary"></div>
 
         <script>
-            let currentEndpoint = '/api/banknifty';
+                        let currentEndpoint = '/api/banknifty';
             let fetchInterval;
+            let isInitialLoad = true; // Tracks if we need to show the loading text
 
             function getBoxColor(percentChange) {
                 let red, green;
@@ -135,16 +136,25 @@ def index():
             function switchIndex(endpoint, title) {
                 currentEndpoint = `/api/${endpoint}`;
                 document.getElementById('main-title').innerText = `${title} Analysis`;
+                
+                isInitialLoad = true; // Show loading screen when switching between indices
                 fetchStockData();
                 
                 clearInterval(fetchInterval);
-                fetchInterval = setInterval(fetchStockData, 60000); // 10 seconds refresh
+                // Refresh every 10 seconds silently
+                fetchInterval = setInterval(() => {
+                    isInitialLoad = false; // Don't wipe the screen for background updates
+                    fetchStockData();
+                }, 10000); 
             }
 
             async function fetchStockData() {
-                document.getElementById('loading').style.display = 'block';
+                if (isInitialLoad) {
+                    document.getElementById('loading').style.display = 'block';
+                    document.getElementById('stock-container').innerHTML = ''; 
+                    document.getElementById('summary').innerHTML = '';
+                }
                 document.getElementById('error-box').innerText = ''; 
-                document.getElementById('stock-container').innerHTML = ''; 
 
                 try {
                     const response = await fetch(currentEndpoint);
@@ -159,22 +169,21 @@ def index():
                          throw new Error(errors[0]);
                     }
 
-                    const container = document.getElementById('stock-container');
+                    // Build the new HTML in memory first to prevent screen flashing
+                    let newContainerHTML = '';
                     let positiveCount = 0; let negativeCount = 0;
                     let positiveTotalPercent = 0; let negativeTotalPercent = 0;
                     let totalPercent = 0;
 
                     data.forEach(stock => {
-                        const stockBox = document.createElement('div');
-                        stockBox.classList.add('stock-box');
-                        stockBox.style.backgroundColor = getBoxColor(stock.percent_change);
-
-                        stockBox.innerHTML = `
-                            <div class="symbol">${stock.symbol}</div>
-                            <div class="price">₹${stock.price.toFixed(2)}</div>
-                            <div class="percent-change">${stock.percent_change.toFixed(2)}%</div>
+                        const color = getBoxColor(stock.percent_change);
+                        newContainerHTML += `
+                            <div class="stock-box" style="background-color: ${color};">
+                                <div class="symbol">${stock.symbol}</div>
+                                <div class="price">₹${stock.price.toFixed(2)}</div>
+                                <div class="percent-change">${stock.percent_change.toFixed(2)}%</div>
+                            </div>
                         `;
-                        container.appendChild(stockBox);
 
                         if (stock.percent_change >= 0) {
                             positiveCount++; positiveTotalPercent += stock.percent_change;
@@ -184,22 +193,30 @@ def index():
                         totalPercent += stock.percent_change;
                     });
 
+                    // Math Fix: Calculate Averages properly
+                    const avgPositive = positiveCount > 0 ? (positiveTotalPercent / positiveCount) : 0;
+                    const avgNegative = negativeCount > 0 ? (negativeTotalPercent / negativeCount) : 0;
+                    const avgTotal = data.length > 0 ? (totalPercent / data.length) : 0;
+
+                    // Instantly swap the old data with the new data
+                    document.getElementById('stock-container').innerHTML = newContainerHTML;
+                    
                     document.getElementById('summary').innerHTML = `
-                        <p>Positive Stocks: <b>${positiveCount}</b> | Total Positive %: <span style="color:green;">${positiveTotalPercent.toFixed(2)}%</span></p>
-                        <p>Negative Stocks: <b>${negativeCount}</b> | Total Negative %: <span style="color:red;">${negativeTotalPercent.toFixed(2)}%</span></p>
-                        <p>Total Overall % Change: <b>${totalPercent.toFixed(2)}%</b></p>
+                        <p>Positive Stocks: <b>${positiveCount}</b> | Average Gain: <span style="color:green;">+${avgPositive.toFixed(2)}%</span></p>
+                        <p>Negative Stocks: <b>${negativeCount}</b> | Average Loss: <span style="color:red;">${avgNegative.toFixed(2)}%</span></p>
+                        <p><b>Average Overall Index Change: ${avgTotal > 0 ? '+' : ''}${avgTotal.toFixed(2)}%</b></p>
                     `;
                 } catch (err) {
                     console.error("Fetch Error:", err);
                     document.getElementById('error-box').innerText = `Failed to load data: ${err.message}`;
-                    document.getElementById('summary').innerHTML = ''; 
                 } finally {
                     document.getElementById('loading').style.display = 'none';
                 }
             }
 
+            // Start the app
             switchIndex('banknifty', 'Bank Nifty');
-        </script>
+
     </body>
     </html>
     """
