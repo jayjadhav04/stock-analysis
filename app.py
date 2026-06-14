@@ -144,7 +144,7 @@ def index():
                 fetchInterval = setInterval(() => {
                     isInitialLoad = false; // Don't wipe the screen for background updates
                     fetchStockData();
-                }, 60000); 
+                }, 10000); 
             }
 
             async function fetchStockData() {
