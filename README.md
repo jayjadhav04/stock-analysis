@@ -1,4 +1,4 @@
-# Stock Analysis – Nifty50 & BankNifty 📈
+# 📈 Stock Analysis – Nifty50 & BankNifty 
 
 A real-time stock market analysis web application built using **Python**, **Flask**, and **Yahoo Finance API (`yfinance`)**.
 
@@ -14,7 +14,13 @@ The UI uses color-coded stock cards for quick visualization of market performanc
 
 ---
 
-# 🚀 Features
+
+# 🚀 Live Demo
+🔗 https://indian-stock-analysis-3ram.onrender.com/
+
+---
+
+# 📋Features
 
 ✅ Real-time stock market data using Yahoo Finance API  
 ✅ Separate analysis for **Nifty50** and **BankNifty**  
